@@ -1,0 +1,39 @@
+/* El contenedor del pin */
+.punto-rojo { 
+    position: absolute; 
+    width: 20px; 
+    height: 20px; 
+    transform: translate(-50%, -50%); 
+    z-index: 15; 
+    cursor: pointer; 
+    transition: transform 0.1s ease-out; /* Suaviza el giro */
+}
+
+/* El cono de visión (triángulo) */
+.punto-rojo::before {
+    content: "";
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 25px solid #ff3b5c; /* Color del cono */
+    filter: drop-shadow(0 0 5px rgba(255,59,92,0.5));
+}
+
+/* Punto central para indicar la posición exacta */
+.punto-rojo::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 8px;
+    background: white;
+    border-radius: 50%;
+    border: 2px solid #333;
+}
+
+.punto-rojo.activo::before {
+    border-bottom-color: #00ff44; /* Color diferente cuando está activo */
+}

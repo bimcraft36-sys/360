@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Studio Architect | Tour Master</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root { --olive: #556b2f; --stone: #1a1a1a; --border: #dcdcdc; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+        body { display: flex; height: 100vh; background: #f8f8f6; overflow: hidden; }
+
+        /* Estructura Paneles */
+        .panel-left { width: 330px; background: #fff; border-right: 1px solid var(--border); padding: 25px; display: flex; flex-direction: column; gap: 15px; z-index: 10; overflow-y: auto; }
+        .panel-center { flex: 1; background: #000; position: relative; }
+        .panel-right { width: 400px; background: #fff; border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; }
+
+        h2 { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--olive); border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 5px; }
+
+        /* Navegación por Pisos Editor */
+        .floor-nav { display: flex; border: 1px solid var(--olive); border-radius: 2px; overflow: hidden; }
+        .floor-btn { flex: 1; padding: 10px; border: none; background: #fff; color: var(--olive); cursor: pointer; font-size: 10px; font-weight: bold; transition: 0.3s; }
+        .floor-btn.active { background: var(--olive); color: #fff; }
+
+        /* PAD DE CALIBRACIÓN */
+        .calib-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 120px; margin: 10px auto; }
+        .btn-pad { width: 38px; height: 38px; background: #fff; border: 1px solid var(--border); color: var(--stone); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-pad:hover { border-color: var(--olive); color: var(--olive); }
+        .btn-pad.center { color: var(--olive); font-weight: bold; }
+
+        /* Botones Editor */
+        .btn-st { width: 100%; padding: 12px; border: 1px solid var(--olive); background: #fff; color: var(--olive); cursor: pointer; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-st:hover { background: var(--olive); color: #fff; }
+        .btn-dark { background: var(--stone); color: #fff; border: none; margin-top: 5px; }
+
+        /* Mapa y SVG (Recorrido) */
+        .map-box { position: relative; flex: 1; border: 1px solid var(--border); background: #fff; overflow: hidden; }
+        #map-img { width: 100%; height: 100%; object-fit: contain; position: absolute; }
+        #map-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+        #pins { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
+
+        /* Nodos y Cono */
+        .dot { position: absolute; width: 12px; height: 12px; background: #fff; border: 2px solid var(--olive); transform: translate(-50%, -50%); cursor: pointer; border-radius: 2px; }
+        .dot.active { background: var(--olive); }
+        .cone { position: absolute; width: 80px; height: 80px; background: radial-gradient(circle at 50% 100%, rgba(85,107,47,0.25), transparent 75%); left: 50%; bottom: 50%; margin-left: -40px; transform-origin: 50% 100%; clip-path: polygon(18% 0%, 82% 0%, 50% 100%); display: none; pointer-events: none; }
+        .active .cone { display: block; }
+
+        /* Flechas en el 360 */
+        .custom-hotspot { height: 40px; width: 40px; background: rgba(255,255,255,0.8); border: 2px solid var(--olive); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--olive); cursor: pointer; }
+        .custom-hotspot::after { content: '\f062'; font-family: "Font Awesome 6 Free"; font-weight: 900; }
+        .floor-jump-hotspot { height: 45px; width: 45px; background: var(--olive); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .floor-jump-hotspot::after { content: '\f338'; font-family: "Font Awesome 6 Free"; font-weight: 900; }
+
+        .info-tag { position: absolute; top: 20px; left: 20px; background: white; padding: 10px 20px; border-left: 4px solid var(--olive); font-size: 11px; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+<aside class="panel-left">
+    <h2>Nivel de Trabajo</h2>
+    <div class="floor-nav">
+        <button class="floor-btn active" onclick="changeLvl(1)">Lvl 1</button>
+        <button class="floor-btn" onclick="changeLvl(2)">Lvl 2</button>
+        <button class="floor-btn" onclick="changeLvl(3)">Lvl 3</button>
+    </div>
+    
+    <button class="btn-st" onclick="document.getElementById('map-in').click()">Subir Plano Nivel</button>
+    <input type="file" id="map-in" hidden>
+
+    <h2>Orientación del Cono</h2>
+    <div class="calib-pad">
+        <div></div><button class="btn-pad" onclick="calib('up')"><i class="fas fa-chevron-up"></i></button><div></div>
+        <button class="btn-pad" onclick="calib('left')"><i class="fas fa-chevron-left"></i></button>
+        <button class="btn-pad center" onclick="calib('reset')"><i class="fas fa-redo-alt"></i></button>
+        <button class="btn-pad" onclick="calib('right')"><i class="fas fa-chevron-right"></i></button>
+        <div></div><button class="btn-pad" onclick="calib('down')"><i class="fas fa-chevron-down"></i></button><div></div>
+    </div>
+
+    <h2>Vincular Escenas (Recorrido)</h2>
+    <p style="font-size: 9px; color: #666;">Selecciona destino (mismo piso o diferente):</p>
+    <select id="conn-target" style="width:100%; padding:8px; font-size:10px; margin-top:5px; border: 1px solid var(--border);"></select>
+    <button class="btn-st btn-dark" onclick="makeConnection()">Crear Conexión</button>
+
+    <button class="btn-st" style="margin-top:auto; background:var(--olive); color:white;" onclick="exportTour()">Exportar para Cliente</button>
+</aside>
+
+<main class="panel-center">
+    <div id="tag" class="info-tag">Studio Architect | Editor</div>
+    <div id="panorama" style="height:100%;"></div>
+</main>
+
+<aside class="panel-right">
+    <h2>Vista de Plano</h2>
+    <div class="map-box" id="map-area">
+        <img id="map-img" src="">
+        <svg id="map-svg"></svg>
+        <div id="pins"></div>
+    </div>
+</aside>
+
+<script>
+    let db = {
+        lvl: 1,
+        floors: { 1: {map: "", scenes: {}}, 2: {map: "", scenes: {}}, 3: {map: "", scenes: {}} },
+        links: [],
+        cfg: { yaw: 0, scale: 1 }
+    };
+    let viewer = null, curId = null, tempPos = null;
+
+    function changeLvl(f) {
+        db.lvl = f;
+        document.querySelectorAll('.floor-btn').forEach((b, i) => b.classList.toggle('active', i+1 === f));
+        document.getElementById('map-img').src = db.floors[f].map || "";
+        renderMap();
+    }
+
+    document.getElementById('map-in').onchange = e => {
+        let r = new FileReader();
+        r.onload = ev => { db.floors[db.lvl].map = ev.target.result; changeLvl(db.lvl); };
+        r.readAsDataURL(e.target.files[0]);
+    };
+
+    document.getElementById('map-area').onclick = e => {
+        if(e.target.classList.contains('dot')) return;
+        let rect = e.currentTarget.getBoundingClientRect();
+        tempPos = { x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100 };
+        const inp = document.createElement('input'); inp.type = 'file';
+        inp.onchange = ev => {
+            let r = new FileReader();
+            r.onload = res => {
+                let id = "S_" + Date.now();
+                let sc = { id, floor: db.lvl, x: tempPos.x, y: tempPos.y, panorama: res.target.result, hotSpots: [] };
+                db.floors[db.lvl].scenes[id] = sc;
+                if(!viewer) {
+                    viewer = pannellum.viewer('panorama', { "default": { "firstScene": id, "autoLoad": true }, "scenes": { [id]: sc } });
+                } else {
+                    viewer.addScene(id, sc); viewer.loadScene(id);
+                }
+                updateSelectors();
+            };
+            r.readAsDataURL(ev.target.files[0]);
+        };
+        inp.click();
+    };
+
+    function calib(m) {
+        if(m==='left') db.cfg.yaw -= 5;
+        if(m==='right') db.cfg.yaw += 5;
+        if(m==='up') db.cfg.scale += 0.05;
+        if(m==='down') db.cfg.scale -= 0.05;
+        if(m==='reset') { db.cfg.yaw = 0; db.cfg.scale = 1; }
+    }
+
+    function makeConnection() {
+        let tid = document.getElementById('conn-target').value;
+        if(!tid || tid === curId) return;
+        
+        db.links.push({ from: curId, to: tid });
+        let tScene = findS(tid);
+        let isJump = tScene.floor !== db.lvl;
+        let hs = { pitch: viewer.getPitch(), yaw: viewer.getYaw(), type: "scene", sceneId: tid, cssClass: isJump ? "floor-jump-hotspot" : "custom-hotspot" };
+        viewer.addHotSpot(hs, curId);
+        findS(curId).hotSpots.push(hs);
+        renderMap(); 
+    }
+
+    function renderMap() {
+        const p = document.getElementById('pins'); 
+        const svg = document.getElementById('map-svg');
+        p.innerHTML = ""; svg.innerHTML = "";
+
+        db.links.forEach(l => {
+            let s1 = findS(l.from), s2 = findS(l.to);
+            if(s1 && s2 && s1.floor === db.lvl && s2.floor === db.lvl) {
+                let ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                ln.setAttribute("x1", s1.x+"%"); ln.setAttribute("y1", s1.y+"%");
+                ln.setAttribute("x2", s2.x+"%"); ln.setAttribute("y2", s2.y+"%");
+                ln.setAttribute("stroke", "#556b2f"); ln.setAttribute("stroke-width", "1.5"); ln.setAttribute("stroke-dasharray", "4");
+                svg.appendChild(ln);
+            }
+        });
+
+        Object.values(db.floors[db.lvl].scenes).forEach(s => {
+            let d = document.createElement('div');
+            d.className = 'dot' + (curId === s.id ? ' active' : '');
+            d.style.left = s.x + '%'; d.style.top = s.y + '%'; d.id = 'dot-' + s.id;
+            d.innerHTML = '<div class="cone"></div>';
+            d.onclick = () => viewer.loadScene(s.id);
+            p.appendChild(d);
+        });
+    }
+
+    function findS(id) {
+        for(let f in db.floors) if(db.floors[f].scenes[id]) return db.floors[f].scenes[id];
+        return null;
+    }
+
+    function updateSelectors() {
+        let sel = document.getElementById('conn-target');
+        sel.innerHTML = "<option value=''>Destino...</option>";
+        for(let f in db.floors) {
+            for(let id in db.floors[f].scenes) sel.innerHTML += `<option value="${id}">Lvl ${f} - Escena</option>`;
+        }
+        renderMap();
+    }
+
+    setInterval(() => {
+        if(viewer && viewer.getScene()) {
+            let id = viewer.getScene();
+            if(id !== curId) { 
+                curId = id; let sc = findS(id);
+                if(sc.floor !== db.lvl) changeLvl(sc.floor);
+                document.getElementById('tag').innerText = "Viendo: Nivel " + sc.floor;
+                renderMap(); 
+            }
+            let d = document.getElementById('dot-' + id);
+            if(d) {
+                let pitchScale = (1 - viewer.getPitch()/90) * db.cfg.scale;
+                d.querySelector('.cone').style.transform = `rotate(${viewer.getYaw() + db.cfg.yaw}deg) scaleY(${pitchScale})`;
+            }
+        }
+    }, 50);
+
+    /* --- EXPORTACIÓN CLIENTE PREMIUM (FUENTE FINA Y NEGRITA AL SELECCIONAR) --- */
+    function exportTour() {
+        let allS = {};
+        for(let f in db.floors) Object.assign(allS, db.floors[f].scenes);
+
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Architectural Experience</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+        <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"><\/script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+            body { margin: 0; background: #000; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+            #v { width: 100vw; height: 100vh; position: absolute; top:0; left:0; }
+            
+            /* Niveles flotantes a la Izquierda - Tipografía Fina */
+            .side-nav { position: absolute; left: 30px; top: 50%; transform: translateY(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 20px; }
+            .side-nav button { padding: 5px 0; border: none; background: transparent; color: white; font-size: 14px; text-transform: uppercase; font-weight: 300; letter-spacing: 2.5px; cursor: pointer; transition: all 0.3s ease; text-align: left; text-shadow: 0 2px 6px rgba(0,0,0,0.8); opacity: 0.6; }
+            .side-nav button:hover { transform: translateX(5px); opacity: 1; }
+            
+            /* Estado Activo: Letra Negrita (Bold) */
+            .side-nav button.active { font-weight: bold; opacity: 1; text-shadow: 0 3px 8px rgba(0,0,0,0.9); }
+
+            /* Botón Ocultar/Mostrar Plano */
+            .btn-toggle-map { position: absolute; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(4px); border: none; color: #556b2f; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: 0.3s; }
+            .btn-toggle-map:hover { background: #556b2f; color: white; }
+
+            /* Contenedor del Plano - Sutil y Elegante */
+            .map-ui { position: absolute; bottom: 100px; right: 30px; width: 280px; height: 280px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border-radius: 8px; padding: 15px; z-index: 1000; box-shadow: 0 10px 40px rgba(0,0,0,0.2); transition: opacity 0.4s ease, transform 0.4s ease; opacity: 1; transform: translateY(0); }
+            .map-ui.hidden { opacity: 0; transform: translateY(20px); pointer-events: none; }
+            
+            .dot { position: absolute; width: 10px; height: 10px; border: 1.5px solid #556b2f; background: white; transform: translate(-50%, -50%); cursor: pointer; }
+            .dot.active { background: #556b2f; }
+            .cone { position: absolute; width: 70px; height: 70px; background: radial-gradient(circle at 50% 100%, rgba(85,107,47,0.3), transparent 70%); left: 50%; bottom: 50%; margin-left: -35px; transform-origin: 50% 100%; clip-path: polygon(20% 0%, 80% 0%, 50% 100%); display: none; }
+            .active .cone { display: block; }
+            svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;}
+            
+            /* Flechas Pannellum */
+            .custom-hotspot { height: 35px; width: 35px; background: rgba(255,255,255,0.8); border: 2px solid #556b2f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #556b2f; cursor: pointer;}
+            .custom-hotspot::after { content: '\\f062'; font-family: "Font Awesome 6 Free"; font-weight: 900; }
+            .floor-jump-hotspot { height: 45px; width: 45px; background: #556b2f; border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer;}
+            .floor-jump-hotspot::after { content: '\\f338'; font-family: "Font Awesome 6 Free"; font-weight: 900; }
+        </style></head><body>
+            
+            <div id="v"></div>
+            
+            <div class="side-nav" id="fn"></div>
+
+            <button class="btn-toggle-map" onclick="document.getElementById('map-container').classList.toggle('hidden')">
+                <i class="fas fa-map"></i>
+            </button>
+
+            <div class="map-ui" id="map-container">
+                <div style="position:relative; width:100%; height:100%;">
+                    <img id="mi" style="width:100%; height:100%; object-fit:contain">
+                    <svg id="ms"></svg>
+                    <div id="pl" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index: 10;"></div>
+                </div>
+            </div>
+
+            <script>
+                const scs = ${JSON.stringify(allS)};
+                const fls = ${JSON.stringify(db.floors)};
+                const lks = ${JSON.stringify(db.links)};
+                const cfg = ${JSON.stringify(db.cfg)};
+                let cf = 1;
+                const v = pannellum.viewer('v', { "default": { "firstScene": Object.keys(scs)[0], "autoLoad": true, "compass": false }, "scenes": scs });
+                
+                function draw(n) {
+                    cf = n; 
+                    document.getElementById('mi').src = fls[n].map || '';
+                    
+                    const pl = document.getElementById('pl'); pl.innerHTML = "";
+                    const ms = document.getElementById('ms'); ms.innerHTML = "";
+                    
+                    // Líneas
+                    lks.forEach(l => {
+                        let s1 = scs[l.from], s2 = scs[l.to];
+                        if(s1 && s2 && s1.floor == cf && s2.floor == cf) {
+                            let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                            line.setAttribute("x1", s1.x+"%"); line.setAttribute("y1", s1.y+"%");
+                            line.setAttribute("x2", s2.x+"%"); line.setAttribute("y2", s2.y+"%");
+                            line.setAttribute("stroke", "#556b2f"); line.setAttribute("stroke-width", "1.5"); line.setAttribute("stroke-dasharray", "4");
+                            ms.appendChild(line);
+                        }
+                    });
+
+                    // Nodos
+                    Object.values(fls[n].scenes).forEach(s => {
+                        const d = document.createElement('div'); d.className = 'dot'; d.id = 'p-'+s.id;
+                        d.style.left = s.x+'%'; d.style.top = s.y+'%'; d.innerHTML = '<div class="cone"></div>';
+                        d.onclick = () => v.loadScene(s.id); pl.appendChild(d);
+                    });
+
+                    // Menú Lateral de Pisos (Clickable)
+                    const nav = document.getElementById('fn'); nav.innerHTML = "";
+                    [1,2,3].forEach(i => { 
+                        const b = document.createElement('button'); 
+                        b.innerText = 'NIVEL '+i; 
+                        if(i==cf) b.className='active'; 
+                        b.onclick=()=>draw(i); 
+                        nav.appendChild(b); 
+                    });
+                }
+                
+                setInterval(() => {
+                    const sid = v.getScene(); if(!sid) return;
+                    if(scs[sid].floor != cf) draw(scs[sid].floor);
+                    document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+                    const dot = document.getElementById('p-'+sid);
+                    if(dot) { dot.classList.add('active'); dot.querySelector('.cone').style.transform = "rotate("+(v.getYaw()+cfg.yaw)+"deg) scaleY("+(1-v.getPitch()/90)*cfg.scale+")"; }
+                }, 50);
+                draw(1);
+            <\/script></body></html>`;
+
+        const blob = new Blob([html], {type: 'text/html'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = "Presentacion_Premium_Cliente.html";
+        link.click();
+    }
+</script>
+</body>
+</html>
